@@ -1,6 +1,4 @@
-#funzione che crea oggetto SRE_mv_multiresProva 
-#Versione generale (non per forza tutti i processi hanno stesso numero di osservazioni) 
-SRE_mv_multiresProva <- function(
+SRE_mv <- function(
     f, data, basis, BAUs, response_vars, n_levels, dims_basis_lattice, S0_list,
     est_error = TRUE,
     average_in_BAU = TRUE,
@@ -29,7 +27,7 @@ SRE_mv_multiresProva <- function(
   #F_block <- as.matrix(BAUs@data[, covariate_names, drop = FALSE])
   F_mat <- Matrix::kronecker(Matrix::Diagonal(p), F_block)
   
-  # Liste degli oggetti che voglio salvarmi
+  # List of the objects that will be saved
   SRE_list        <- vector("list", p)
   Z_list <- list()
   C_Z_list <- list()
@@ -44,7 +42,7 @@ SRE_mv_multiresProva <- function(
   beta_list <- list()
   eta_list <- list()
 
-  # Ciclo su ogni variabile risposta
+  # Loop on every response variable 
   for (i in seq_along(response_vars)) {
     vname <- response_vars[i]
     covariate_names <- setdiff(names(data), response_vars)
@@ -52,8 +50,8 @@ SRE_mv_multiresProva <- function(
     #all_BAU_vars   <- names(BAUs@data)
     #covariate_names <- setdiff(all_BAU_vars, c( "w", "offset", response_vars))
     
-    temp <- data[[i]]  # Estrai l'oggetto Spatial della i-esima variabile
-    # Chiama SRE per questa variabile
+    temp <- data[[i]] 
+  
     model <- SRE(
       f = f[[i]],
       data = list(temp),
@@ -77,7 +75,7 @@ SRE_mv_multiresProva <- function(
     eta_list[[i]] <- model@mu_eta
   }
   
-  ## Aggrego le matrici in blocchi
+  ## Aggregate the matrices 
   #Z <- do.call(cbind, lapply(Z_list, as.numeric))
   #Z <- Matrix::Matrix(Z, sparse = FALSE)
   Z <- Matrix::Matrix(do.call(c, lapply(Z_list, as.vector)), sparse = FALSE)
@@ -90,7 +88,7 @@ SRE_mv_multiresProva <- function(
   beta_hat <- do.call(rbind, beta_list)
   
 
-  ## Inizializzazione dei parametri
+  ## Inizialization parameters
   response_matrix <- do.call(cbind, lapply(Z_list, as.vector))
   obs_var_estimates <- apply(response_matrix, 2, var)
   
