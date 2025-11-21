@@ -1,5 +1,4 @@
 ### helper functions ----
-#funzione che testa s euna matrice è SDP
 is_spd <- function(M) {
   # Forza simmetria se non già
   if (!Matrix::isSymmetric(M)) return(FALSE)
@@ -26,11 +25,11 @@ SRE_mv.fit <- function(SRE_mv_obj, n_EM = 100L, tol = 0.01, print_lik = FALSE) {
   
   for (iter in 1:n_EM) {
     
-    # E-step: calcola mu_eta e S_eta condizionati su tutte le Z
+    # E-step
     SRE_mv_obj <- E_step_mv(SRE_mv_obj)
     assign("SRE_snapshot", SRE_mv_obj, envir = .GlobalEnv)
     
-    # M-step: aggiorna alpha_j, sigma2_fs_j, K
+    # M-step
     SRE_mv_obj <- M_step_mv(SRE_mv_obj)
     assign("SRE_snapshot", SRE_mv_obj, envir = .GlobalEnv)
     
@@ -90,7 +89,7 @@ E_step_mv <- function(obj) {
 
 
 
-# function to build B_l SAR matrix(q is the number of basis in level l: q x q grid  ->  B is (q^2 x q^2) )
+# Function to build B_l SAR matrix(q is the number of basis in level l: q x q grid  ->  B is (q^2 x q^2) )
 build_B <- function(n_x,n_y, tau) {
   n <- n_x * n_y
   a  <- 4 + tau^2
@@ -119,31 +118,10 @@ build_B <- function(n_x,n_y, tau) {
   return(B)
 }
 
-#Funzione per costruire Q0 = (B*Bt)
-#Estensione multilevel: adesso avroò una lista di Q0 lunga L
-#Input: tau (vettore L -> valori smoothness), r (vettore L -> numero di basi per livello )
+#Function to build Q0 = (B*Bt)
+#Multilevel version: list of Q0 of length L 
+#Input: tau (scalar), r (vector of length L -> number of basis per level )
 library(Matrix)
-#Funzione per quanto tau è un VETTORE PER LIVELLI 
-#build_Qlist <- function(tau_vec, r_vec) { -----
-#  L <- length(tau_vec)
-#  Q0_list <-  vector("list", L)
-  
- # for (l in seq_len(L)) {
-  #  tau <- tau_vec[l]
-  #  tau_l <- exp(tau*l)
-  #  r <- r_vec[l]
-    
-   # B <- build_B(sqrt(r),tau)
-  #  BBt <- B %*% Matrix::t(B)
-    
-  #  Q0_list[[l]] <- BBt
-  #}
-  
- # return(Q0_list)
-#}
-
-
-#Funzione per quando uso parametrizzazione tau_l = exp(tau*l) -----
 build_Qlist <- function(tau, r_vec, dims_basis_lattice) {
   L <- length(r_vec)
   Q0_list <-  vector("list", L)
@@ -159,13 +137,13 @@ build_Qlist <- function(tau, r_vec, dims_basis_lattice) {
 }
 
 
-#Funzione per costruire matrice Sigma_l inversa
-#Estensione multilevel: adesso avrò una lista di Sigma_l lunga L
-# NB: la funzione restituisce Sigma_l invertite!
+#Function to build Sigma_l inverse, l=1...L
+#Extension multilevel: list of length L of Sigma_l
+# NB: function return inverse of Sigma_l !
 #Input: 
-# -sigma2_s (vettore lungo p)
-# -r0 (scalare), r1 (scalare)
-# -L (scalare): numero livelli
+# -sigma2_s (vector of length p )
+# -r0 (scalar), r1 (scalar)
+# -L (scalar): numbers of levels
 build_Sigma_list <- function(sigma2_s, r0, r1, alpha, L,
                                 jitter0 = 1e-8, max_attempt = 5, clip_eps = 1e-10) {
   p <- length(sigma2_s)
@@ -179,10 +157,9 @@ build_Sigma_list <- function(sigma2_s, r0, r1, alpha, L,
   
 
   for (l in 1:L) {
-    # rho_l costante per tutte le coppie (i,j) al livello l
     rho_l <- r0 * exp(-r1 * (l-1))
     rho_l <- max(min(rho_l, rho_hi), rho_lo)   
-    # garantisco |rho_l| < 1
+    # |rho_l| < 1
     if (abs(rho_l) >= 1) {
       rho_l <- sign(rho_l) * (1 - clip_eps)
       warning(sprintf("rho_l clippato a %.12f al livello l=%d per garantire SPD.", rho_l, l))
@@ -202,7 +179,6 @@ build_Sigma_list <- function(sigma2_s, r0, r1, alpha, L,
           Sigma[j, i] <- Sigma[i, j]
         }
       }
-      # forzo simmetria (ridondante ma sicuro)
       Sigma <- 0.5 * (Sigma + t(Sigma))
     }
     
@@ -215,8 +191,8 @@ build_Sigma_list <- function(sigma2_s, r0, r1, alpha, L,
     if (!is_spd(Sigma)) stop(sprintf("Sigma_l (l=%d) non è SPD anche dopo la stabilizzazione.", l))
     
     
-    Rchol <- chol(Sigma)                 # upper-triangular
-    SigmaInv <- chol2inv(Rchol)          # (Rchol^{-1})^T Rchol^{-1}
+    Rchol <- chol(Sigma)                
+    SigmaInv <- chol2inv(Rchol)         
     
   
     SigmaInv <- 0.5 * (SigmaInv + t(SigmaInv))
@@ -228,7 +204,7 @@ build_Sigma_list <- function(sigma2_s, r0, r1, alpha, L,
 }
 
 
-## Funzione per costruire Q totale
+## Function to build Q total 
 #Input: BBt_list, r0,r1,L
 build_Q_total <- function(BBt_list, sigma2_s, r0, r1, alpha, L) {
   SigmaInv_list <- build_Sigma_list(sigma2_s, r0, r1, alpha, L)
